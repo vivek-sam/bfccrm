@@ -12,7 +12,7 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
     apk add ca-certificates rsyslog logrotate runit && \
     # Make info file about this build
     mkdir -p /etc/BUILDS/ && \
-    printf "Build of nimmis/alpine-micro:3.9, date: %s\n"  `date -u +"%Y-%m-%dT%H:%M:%SZ"` > /etc/BUILDS/alpine-micro && \
+    # # printf "Build of nimmis/alpine-micro:3.9, date: %s\n"  `date -u +"%Y-%m-%dT%H:%M:%SZ"` > /etc/BUILDS/alpine-micro && \
     # install extra from github, including replacement for process 0 (init)
     # add extra package for installation
     apk add curl && \
@@ -31,7 +31,6 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
     # # sed  -i "s|\*.emerg|\#\*.emerg|" /etc/rsyslog.conf && \
     # # sed -i 's/$ModLoad imklog/#$ModLoad imklog/' /etc/rsyslog.conf && \
     # # sed -i 's/$KLogPermitNonKernelFacility on/#$KLogPermitNonKernelFacility on/' /etc/rsyslog.conf && \
-    
     # Apache Install
     apk add apache2 libxml2-dev apache2-utils && \
     mkdir /web/ && chown -R apache.www-data /web && \
@@ -45,7 +44,6 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
     sed -i 's#Directory "/var/www/localhost/cgi-bin.*#Directory "/web/cgi-bin" >#g' /etc/apache2/httpd.conf && \
     sed -i 's#/var/log/apache2/#/web/logs/#g' /etc/logrotate.d/apache2 && \
     sed -i 's/Options Indexes/Options /g' /etc/apache2/httpd.conf && \
-    
     # Php7 Install
     apk add --no-cache \
             libressl@edge \
@@ -69,7 +67,6 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
             php7-pgsql@community \
             php7-sqlite3@community \
             php7-phar@community && \
-    
     ln -s /usr/bin/php7 /usr/bin/php && \
     cd /tmp && curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer && \
     # remove cached info
