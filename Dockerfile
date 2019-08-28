@@ -67,7 +67,7 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
             php7-pgsql@community \
             php7-sqlite3@community \
             php7-phar@community && \
-    ln -s /usr/bin/php7 /usr/bin/php && \
+    # ln -s /usr/bin/php7 /usr/bin/php && \
     cd /tmp && curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer && \
     # remove cached info
     rm -rf /var/cache/apk/*
