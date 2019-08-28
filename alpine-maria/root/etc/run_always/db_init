@@ -1,0 +1,161 @@
+#!/bin/sh
+
+
+if [ -f /data/mysql.configured ]; then
+  exit 0
+fi
+
+#
+# create all directories if missing
+#
+
+mkdir -p /data/log/mysql
+mkdir -p /data/db/mysql/
+mkdir -p /data/conf
+mkdir -p /var/run/mysqld
+
+#
+# set correct owner
+#
+
+chown -R mysql.mysql /data/log/mysql
+chown -R mysql.mysql /data/db/mysql/
+chown -R mysql.mysql /var/run/mysqld
+
+#
+# check for config-file
+#
+
+if [ ! -f /data/conf/my.cnf ]; then
+  cp /etc/mysql/my.cnf  /data/conf/my.cnf
+  chmod +r /data/conf/my.cnf
+fi
+
+# determine root password
+unset ROOT_PASSWORD
+
+if [ ! -z "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
+  ROOT_PASSWORD=`date +%s | sha256sum | base64 | head -c 16 ; echo`
+  echo "set root to random password $ROOT_PASSWORD"
+else
+  if [ ! -z "$MYSQL_ROOT_PASSWORD" ]; then
+    echo "setting root password to $MYSQL_ROOT_PASSWORD"
+    ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD"
+  fi
+fi
+
+if [ -z "$ROOT_PASSWORD" ]; then
+  if [ ! -z "$MYSQL_ALLOW_EMPTY_PASSWORD" ]; then
+     echo "WARNING: It is a security risk running a database without a root password"
+  else
+     echo "ERROR: No root password (-e MARIADB_ROOT_PASSWORD=<pwd>) defined, use -e MARIADB_ALLOW_EMPTY_PASSWORD=yes to allow"
+     exit 1
+  fi
+fi
+
+mkdir -p /data
+chown -R mysql.mysql /data
+
+if [ ! -d /data/db/mysql/mysql ]; then
+  # initialize database if not found
+  /usr/bin/mysql_install_db --datadir=/data/db/mysql/ --user=mysql 2> /dev/null
+
+  # start database for config
+
+  /usr/bin/mysqld_safe --defaults-file=/data/conf/my.cnf --datadir=/data/db/mysql/  &
+
+  # wait for it to start
+  echo -n "wait for db to start"
+
+  c=1
+  while [[ $c -le 10 ]]
+  do
+    echo 'SELECT 1' | /usr/bin/mysql &> /dev/null
+#    echo "R=$?"
+    if [ $? -eq 0 ]; then
+      break
+    fi
+    echo "."
+    sleep 1
+    let c=c+1
+  done
+  echo "C=$c"
+
+  if [ $c -eq 11 ]; then
+    echo "database failed to start"
+    exit 1
+  fi
+
+  # remove some stuff
+
+  echo "DROP DATABASE IF EXISTS test;" | /usr/bin/mysql
+  echo "DELETE FROM mysql.user WHERE user='';" | /usr/bin/mysql
+
+  if [ ! -z $MYSQL_DATABASE ]; then
+     echo "Creating database $MYSQL_DATABASE"
+     echo "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE ;" | /usr/bin/mysql
+  fi
+
+  if [ ! -z $WORDPRESS_DB_USER ]; then
+     echo "Creating user $WORDPRESS_DB_USER"
+     echo "CREATE USER '$WORDPRESS_DB_USER'@'%' IDENTIFIED BY '$WORDPRESS_DB_PASSWORD' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     echo "CREATE USER '$WORDPRESS_DB_USER'@'localhost' IDENTIFIED BY '$WORDPRESS_DB_PASSWORD' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     if [ ! -z $WORDPRESS_DB_NAME ]; then
+       echo "Granting access for $WORDPRESS_DB_USER to $WORDPRESS_DB_NAME"
+       echo "GRANT ALL ON $WORDPRESS_DB_NAME.* TO '$WORDPRESS_DB_USER'@'%' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+       echo "GRANT ALL ON $WORDPRESS_DB_NAME.* TO '$WORDPRESS_DB_USER'@'localhost' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     fi
+  fi
+
+  if [ ! -z $MYSQL_USER ]; then
+     echo "Creating user $MYSQL_USER"
+     echo "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     echo "CREATE USER '$MYSQL_USER'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     if [ ! -z $MYSQL_DATABASE ]; then
+       echo "Granting access for $MYSQL_USER to $MYSQL_DATABASE"
+       echo "GRANT ALL ON $MYSQL_DATABASE.* TO '$MYSQL_USER'@'%' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+       echo "GRANT ALL ON $MYSQL_DATABASE.* TO '$MYSQL_USER'@'localhost' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     fi
+  fi
+
+  if [ ! -z $MYSQL_USER_2 ]; then
+     echo "Creating user $MYSQL_USER_2"
+     echo "CREATE USER '$MYSQL_USER_2'@'%' IDENTIFIED BY '$MYSQL_PASSWORD_2' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     echo "CREATE USER '$MYSQL_USER_2'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD_2' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     if [ ! -z $MYSQL_DATABASE_2 ]; then
+       echo "Granting access for $MYSQL_USER_2 to $MYSQL_DATABASE_2"
+       echo "GRANT ALL ON $MYSQL_DATABASE_2.* TO '$MYSQL_USER_2'@'%' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+       echo "GRANT ALL ON $MYSQL_DATABASE_2.* TO '$MYSQL_USER_2'@'localhost' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     fi
+  fi
+
+  if [ ! -z $MYSQL_USER_3 ]; then
+     echo "Creating user $MYSQL_USER_3"
+     echo "CREATE USER '$MYSQL_USER_3'@'%' IDENTIFIED BY '$MYSQL_PASSWORD_3' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     echo "CREATE USER '$MYSQL_USER_3'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD_3' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     if [ ! -z $MYSQL_DATABASE_3 ]; then
+       echo "Granting access for $MYSQL_USER_3 to $MYSQL_DATABASE_3"
+       echo "GRANT ALL ON $MYSQL_DATABASE_3.* TO '$MYSQL_USER_3'@'%' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+       echo "GRANT ALL ON $MYSQL_DATABASE_3.* TO '$MYSQL_USER_3'@'localhost' ;FLUSH PRIVILEGES;" | /usr/bin/mysql
+     fi
+  fi
+
+  if [ ! -z "$MYSQL_REMOTE_ROOT" ]; then
+     echo "Grant root access from remote host"
+     echo "GRANT ALL ON *.* to 'root'@'%' IDENTIFIED BY '$ROOT_PASSWORD' ;" | /usr/bin/mysql
+  fi
+
+  if [ ! -z "$ROOT_PASSWORD" ]; then
+     echo "UPDATE mysql.user SET Password=PASSWORD('$ROOT_PASSWORD') WHERE User='root';FLUSH PRIVILEGES;" | /usr/bin/mysql
+     echo "root password updated"
+  fi
+
+fi
+
+# finished, stop it an runit start the mysqld
+
+/usr/bin/mysqladmin shutdown -p"$ROOT_PASSWORD"
+
+# mark configured
+
+touch /data/mysql.configured

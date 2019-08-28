@@ -1,0 +1,1 @@
+docker build -t alpine-mariadb:1.0 .
