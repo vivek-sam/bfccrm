@@ -18,9 +18,9 @@ RUN echo "@community http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/
     apk add curl && \
     cd /tmp && \
     # Install utils and init process
-    # # curl -Ls https://github.com/nimmis/docker-utils/archive/master.tar.gz | tar xfz - && \
-    # #./docker-utils-master/install.sh && \
-    # # rm -Rf ./docker-utils-master && \
+    curl -Ls https://github.com/nimmis/docker-utils/archive/master.tar.gz | tar xfz - && \
+    ./docker-utils-master/install.sh && \
+    rm -Rf ./docker-utils-master && \
     # Install backup support
     # # curl -Ls https://github.com/nimmis/backup/archive/master.tar.gz | tar xfz - && \
     # # ./backup-master/install.sh all && \
