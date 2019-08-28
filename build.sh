@@ -1,0 +1,1 @@
+docker build -t alpine-apache-php7:3.10 .
